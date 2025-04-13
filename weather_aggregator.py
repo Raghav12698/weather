@@ -80,18 +80,105 @@ def start_scheduler(city="London"):
         time.sleep(1)
 
 # ======= Optional Streamlit UI =======
+# def run_ui():
+#     import streamlit as st
+#     st.title("🌍 Real-Time Weather Aggregator")
+#     city = st.text_input("Enter City", "London")
+
+#     if st.button("Get Weather"):
+#         data1 = get_openweather(city)
+#         data2 = get_weatherapi(city)
+#         data3 = get_weatherstack(city)
+#         temps = normalize_data([data1, data2, data3])
+#         merged_temp = ai_merge_temperature(temps)
+#         st.success(f"🌤 {city}: {merged_temp}°C (from {len(temps)} sources)")
 def run_ui():
     import streamlit as st
-    st.title("🌍 Real-Time Weather Aggregator")
-    city = st.text_input("Enter City", "London")
+    import datetime
+
+    st.set_page_config(page_title="🌤️ Weather App", page_icon="🌦️", layout="centered")
+
+    # Dark mode support + white card fix
+    st.markdown("""
+        <style>
+        .main {
+            background-color: #0f1117;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .weather-box {
+            background-color: #ffffff;
+            border-radius: 20px;
+            padding: 30px;
+            margin-top: 30px;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(255,255,255,0.05);
+            color: #000000;
+        }
+        .temperature {
+            font-size: 50px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .city {
+            font-size: 32px;
+            font-weight: 600;
+        }
+        .weather-details {
+            font-size: 18px;
+            margin-top: 10px;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    st.title("🌦️ Real-Time Weather App")
+
+    city = st.text_input("🔍 Enter City Name", "London")
 
     if st.button("Get Weather"):
         data1 = get_openweather(city)
         data2 = get_weatherapi(city)
         data3 = get_weatherstack(city)
+
         temps = normalize_data([data1, data2, data3])
         merged_temp = ai_merge_temperature(temps)
-        st.success(f"🌤 {city}: {merged_temp}°C (from {len(temps)} sources)")
+
+        if merged_temp == "N/A":
+            st.error("❌ Could not fetch data. Please try again.")
+            return
+
+        # Extract more details from OpenWeatherMap (first fallback)
+        humidity = wind = "-"
+        weather_icon = "🌦️"
+        if data1 and data1.get("main"):
+            humidity = data1["main"].get("humidity", "-")
+            wind = data1["wind"].get("speed", "-")
+
+            main_desc = data1["weather"][0]["main"].lower()
+            if "clear" in main_desc:
+                weather_icon = "☀️"
+            elif "cloud" in main_desc:
+                weather_icon = "⛅"
+            elif "rain" in main_desc:
+                weather_icon = "🌧️"
+            elif "snow" in main_desc:
+                weather_icon = "❄️"
+            elif "storm" in main_desc:
+                weather_icon = "⛈️"
+
+        st.markdown(f"""
+            <div class="weather-box">
+                <div class="city">{city.title()} {weather_icon}</div>
+                <div class="temperature">{merged_temp}°C</div>
+                <div class="weather-details">
+                    💧 Humidity: {humidity}%<br>
+                    🌬️ Wind: {wind} m/s<br>
+                    📅 {datetime.datetime.now().strftime('%A, %d %B %Y - %I:%M %p')}
+                </div>
+                <div style="margin-top: 10px; font-size: 14px; color: #444;">
+                    Data aggregated from {len(temps)} weather services.
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
 
 # ======= Entry Point =======
 if __name__ == "__main__":
